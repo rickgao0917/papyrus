@@ -44,7 +44,7 @@ def send_to_gemini(prompt, api_key):
         return "Error: Invalid JSON response"
 
 def main():
-    api_key = 'AIzaSyDPTPoMcdtMztnh34o8YGvZYm81NqP7oCg'
+    api_key = ''
     
     if not api_key:
         print("Error: GEMINI_API_KEY environment variable not set")

@@ -407,33 +407,27 @@ The function calls itself with decreasing values until it reaches the base case.
         }
         
         function insertLoadingBlock(afterIndex, blockId) {
-            // Store current cursor position
             const currentCursorStart = editor.selectionStart;
             const currentCursorEnd = editor.selectionEnd;
             
             const beforeText = editor.value.substring(0, afterIndex);
             const afterText = editor.value.substring(afterIndex);
-            
-            // Add newline after closing ``` and then the loading block
             const loadingBlock = `\n\n\`\`\`llm_r\n*Loading response from Gemini...*\n\`\`\``;
             
             console.log('[DEBUG] Inserting loading block at position:', afterIndex);
             editor.value = beforeText + loadingBlock + afterText;
             
-            // Restore cursor position if it was after the insertion point
             if (currentCursorStart > afterIndex) {
                 const offset = loadingBlock.length;
                 editor.selectionStart = currentCursorStart + offset;
                 editor.selectionEnd = currentCursorEnd + offset;
             } else {
-                // Keep cursor where it was
                 editor.selectionStart = currentCursorStart;
                 editor.selectionEnd = currentCursorEnd;
             }
             
-            // Store the loading block info
             loadingBlocks.set(blockId, {
-                startPos: afterIndex + 2, // +2 for the \n\n
+                startPos: afterIndex + 2,
                 loadingText: loadingBlock
             });
             
@@ -444,7 +438,6 @@ The function calls itself with decreasing values until it reaches the base case.
             const loadingInfo = loadingBlocks.get(blockId);
             if (!loadingInfo) return;
             
-            // Store current cursor position
             const currentCursorStart = editor.selectionStart;
             const currentCursorEnd = editor.selectionEnd;
             
@@ -452,7 +445,6 @@ The function calls itself with decreasing values until it reaches the base case.
             
             console.log('[DEBUG] Updating loading block with response');
             
-            // Find the loading block and replace it
             const loadingText = loadingInfo.loadingText;
             const loadingStart = editor.value.indexOf(loadingText);
             
@@ -462,49 +454,38 @@ The function calls itself with decreasing values until it reaches the base case.
                 
                 editor.value = beforeLoading + responseBlock + afterLoading;
                 
-                // Adjust cursor position based on the change in text length
                 const lengthDiff = responseBlock.length - loadingText.length;
                 
                 if (currentCursorStart > loadingStart + loadingText.length) {
-                    // Cursor was after the loading block
                     editor.selectionStart = currentCursorStart + lengthDiff;
                     editor.selectionEnd = currentCursorEnd + lengthDiff;
                 } else if (currentCursorStart >= loadingStart) {
-                    // Cursor was inside the loading block - move it to end of response
                     editor.selectionStart = loadingStart + responseBlock.length;
                     editor.selectionEnd = loadingStart + responseBlock.length;
                 } else {
-                    // Cursor was before the loading block - keep it where it was
                     editor.selectionStart = currentCursorStart;
                     editor.selectionEnd = currentCursorEnd;
                 }
             }
             
-            // Clean up
             loadingBlocks.delete(blockId);
         }
         
         async function processNewLlmPBlock(block) {
             console.log('[DEBUG] Processing new llm_p block:', block.content.substring(0, 50) + '...');
             
-            // Mark as processed immediately
             processedPrompts.add(block.id);
             
-            // Insert loading block
             const insertPosition = block.index + block.fullMatch.length;
             insertLoadingBlock(insertPosition, block.id);
             
-            // Update status
             status.textContent = 'Calling Gemini...';
             status.classList.add('show');
             
-            // Re-render to show loading block
             renderMarkdown();
             
-            // Call Gemini API
             const response = await callGemini(block.content);
             
-            // Update the loading block with response
             await updateLoadingBlock(block.id, response);
             
             status.textContent = 'Response added';
@@ -513,25 +494,22 @@ The function calls itself with decreasing values until it reaches the base case.
             }, 2000);
             
             console.log('[DEBUG] Block processing complete, re-rendering...');
-            // Final render
             renderMarkdown();
         }
         
         function checkForNewBlocks() {
             const currentBlocks = extractLlmPBlocks(editor.value);
             
-            // Find blocks that haven't been processed yet
             for (const block of currentBlocks) {
                 if (!processedPrompts.has(block.id)) {
                     console.log('[DEBUG] Found new llm_p block to process');
                     processNewLlmPBlock(block);
-                    break; // Process one at a time
+                    break;
                 }
             }
         }
         
         function renderMarkdown() {
-            // Immediate rendering - no debouncing
             fetch('/render', {
                 method: 'POST',
                 headers: {
@@ -562,10 +540,8 @@ The function calls itself with decreasing values until it reaches the base case.
         
         editor.addEventListener('input', renderMarkdown);
         
-        // Initial render
         renderMarkdown();
         
-        // Handle tab key in editor
         editor.addEventListener('keydown', (e) => {
             if (e.key === 'Tab') {
                 e.preventDefault();

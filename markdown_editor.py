@@ -9,7 +9,7 @@ import json
 app = Flask(__name__)
 
 # Gemini API configuration
-GEMINI_API_KEY = 'AIzaSyDPTPoMcdtMztnh34o8YGvZYm81NqP7oCg'
+GEMINI_API_KEY = ''
 
 def send_to_gemini(prompt):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
