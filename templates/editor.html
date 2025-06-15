@@ -368,7 +368,6 @@ The function calls itself with decreasing values until it reaches the base case.
         const preview = document.getElementById('preview');
         const status = document.getElementById('status');
         
-        let renderTimeout;
         let processedPrompts = new Set();
         let loadingBlocks = new Map();
         
@@ -532,25 +531,23 @@ The function calls itself with decreasing values until it reaches the base case.
         }
         
         function renderMarkdown() {
-            clearTimeout(renderTimeout);
-            renderTimeout = setTimeout(() => {
-                fetch('/render', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ markdown: editor.value })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    preview.innerHTML = data.html;
-                    showStatus();
-                    checkForNewBlocks();
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-            }, 300); // 300ms debounce
+            // Immediate rendering - no debouncing
+            fetch('/render', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ markdown: editor.value })
+            })
+            .then(response => response.json())
+            .then(data => {
+                preview.innerHTML = data.html;
+                showStatus();
+                checkForNewBlocks();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
         }
         
         function showStatus() {
