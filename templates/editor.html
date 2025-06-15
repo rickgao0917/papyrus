@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Editor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            text-align: center;
+        }
+        
+        .container {
+            flex: 1;
+            display: flex;
+            height: calc(100vh - 60px);
+        }
+        
+        .editor-pane, .preview-pane {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .editor-pane {
+            background-color: #2d2d2d;
+            border-right: 2px solid #444;
+        }
+        
+        #editor {
+            width: 100%;
+            height: 100%;
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            border: none;
+            outline: none;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            padding: 10px;
+        }
+        
+        .preview-pane {
+            background-color: white;
+            padding: 30px;
+        }
+        
+        #preview {
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 16px;
+            line-height: 1.6;
+        }
+        
+        /* Markdown preview styles */
+        #preview h1, #preview h2, #preview h3, #preview h4, #preview h5, #preview h6 {
+            margin-top: 24px;
+            margin-bottom: 16px;
+            font-weight: 600;
+            line-height: 1.25;
+        }
+        
+        #preview h1 { font-size: 2em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+        #preview h2 { font-size: 1.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+        #preview h3 { font-size: 1.25em; }
+        #preview h4 { font-size: 1em; }
+        #preview h5 { font-size: 0.875em; }
+        #preview h6 { font-size: 0.85em; color: #777; }
+        
+        #preview p { margin-bottom: 16px; }
+        
+        #preview code {
+            background-color: #f6f8fa;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 85%;
+        }
+        
+        #preview pre {
+            background-color: #f6f8fa;
+            padding: 16px;
+            overflow: auto;
+            font-size: 85%;
+            line-height: 1.45;
+            border-radius: 6px;
+            margin-bottom: 16px;
+        }
+        
+        #preview pre code {
+            background-color: transparent;
+            padding: 0;
+        }
+        
+        #preview blockquote {
+            padding: 0 1em;
+            color: #666;
+            border-left: 0.25em solid #ddd;
+            margin-bottom: 16px;
+        }
+        
+        #preview ul, #preview ol {
+            padding-left: 2em;
+            margin-bottom: 16px;
+        }
+        
+        #preview li { margin-bottom: 0.25em; }
+        
+        #preview table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 16px;
+        }
+        
+        #preview table th, #preview table td {
+            padding: 6px 13px;
+            border: 1px solid #ddd;
+        }
+        
+        #preview table tr:nth-child(2n) {
+            background-color: #f6f8fa;
+        }
+        
+        #preview hr {
+            height: 0.25em;
+            padding: 0;
+            margin: 24px 0;
+            background-color: #e1e4e8;
+            border: 0;
+        }
+        
+        #preview a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+        
+        #preview a:hover {
+            text-decoration: underline;
+        }
+        
+        #preview img {
+            max-width: 100%;
+            height: auto;
+        }
+        
+        #preview input[type="checkbox"] {
+            margin-right: 0.5em;
+        }
+        
+        /* Special LLM blocks styling */
+        .llm-response {
+            background-color: #f0f7ff;
+            border: 1px solid #c3dafe;
+            border-left: 4px solid #4299e1;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+            position: relative;
+            color: #2d3748;
+        }
+        
+        .llm-response::before {
+            content: "LLM Response";
+            position: absolute;
+            top: -10px;
+            left: 12px;
+            background-color: white;
+            padding: 0 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #4299e1;
+        }
+        
+        .llm-prompt {
+            background-color: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 4px solid #805ad5;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 16px 0;
+            position: relative;
+            color: #2d3748;
+        }
+        
+        .llm-prompt::before {
+            content: "LLM Prompt";
+            position: absolute;
+            top: -10px;
+            left: 12px;
+            background-color: white;
+            padding: 0 8px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #805ad5;
+        }
+        
+        /* Nested code block styling inside LLM blocks */
+        .nested-code-block {
+            margin: 12px 0;
+            border-radius: 6px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.05);
+        }
+        
+        .nested-code-block pre {
+            margin: 0;
+            background: #f6f8fa;
+            padding: 12px;
+            overflow-x: auto;
+        }
+        
+        .nested-code-block code {
+            color: #000000 !important;
+            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+        
+        /* LLM block content styling */
+        .llm-response h1, .llm-response h2, .llm-response h3,
+        .llm-prompt h1, .llm-prompt h2, .llm-prompt h3 {
+            margin: 12px 0 8px 0;
+            color: inherit;
+        }
+        
+        .llm-response strong, .llm-prompt strong {
+            color: #2b6cb0;
+            font-weight: 600;
+        }
+        
+        .llm-response em, .llm-prompt em {
+            color: #553c9a;
+            font-style: italic;
+        }
+        
+        .llm-response code, .llm-prompt code {
+            background-color: rgba(0, 0, 0, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        
+        .llm-response a, .llm-prompt a {
+            color: #3182ce;
+            text-decoration: none;
+        }
+        
+        .llm-response a:hover, .llm-prompt a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Ensure nested content in LLM blocks maintains proper styling */
+        .llm-response > *, .llm-prompt > * {
+            margin-top: 0;
+        }
+        
+        .llm-response > *:last-child, .llm-prompt > *:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* Syntax highlighting hints for nested code blocks */
+        .language-python { color: #f8f8f2; }
+        .language-javascript { color: #f8f8f2; }
+        .language-cpp { color: #f8f8f2; }
+        .language-java { color: #f8f8f2; }
+        .language-json { color: #f8f8f2; }
+        
+        .status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .status.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Markdown Editor</h1>
+    </header>
+    
+    <div class="container">
+        <div class="editor-pane">
+            <textarea id="editor" placeholder="Type your markdown here...
+
+# Welcome to Markdown Editor
+
+Start typing to see live preview...
+
+## Features
+- **Bold** and *italic* text
+- [Links](https://example.com)
+- `Code` snippets
+- Lists and tables
+- And much more!
+
+## Special LLM Blocks
+
+```llm_p
+# Question about Python
+Can you explain this code?
+
+```python
+def factorial(n):
+    if n <= 1:
+        return 1
+    return n * factorial(n-1)
+```
+```
+
+```llm_r
+# Explanation
+
+This is a recursive implementation of the factorial function.
+
+```python
+print('hello world')
+```
+
+## How it works:
+1. Base case: if n <= 1, return 1
+2. Recursive case: multiply n by factorial(n-1)
+
+```cpp
+int main() {
+    return 0;
+}
+```
+
+The function calls itself with decreasing values until it reaches the base case.
+```"></textarea>
+        </div>
+        
+        <div class="preview-pane">
+            <div id="preview"></div>
+        </div>
+    </div>
+    
+    <div class="status" id="status">Saved</div>
+    
+    <script>
+        const editor = document.getElementById('editor');
+        const preview = document.getElementById('preview');
+        const status = document.getElementById('status');
+        
+        let renderTimeout;
+        let processedPrompts = new Set();
+        let loadingBlocks = new Map();
+        
+        function extractLlmPBlocks(text) {
+            const regex = /```llm_p\s*\n(.*?)\n```/gs;
+            const blocks = [];
+            let match;
+            while ((match = regex.exec(text)) !== null) {
+                const blockId = `llm_p_${match.index}_${match[1].trim().substring(0, 50)}`;
+                blocks.push({
+                    content: match[1].trim(),
+                    fullMatch: match[0],
+                    index: match.index,
+                    id: blockId
+                });
+            }
+            return blocks;
+        }
+        
+        async function callGemini(prompt) {
+            console.log('[DEBUG] Calling Gemini with prompt:', prompt.substring(0, 100) + '...');
+            try {
+                const response = await fetch('/gemini', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+                const data = await response.json();
+                console.log('[DEBUG] Gemini response received:', data.response.substring(0, 100) + '...');
+                return data.response;
+            } catch (error) {
+                console.error('[DEBUG] Error calling Gemini:', error);
+                return 'Error: Failed to get response from Gemini';
+            }
+        }
+        
+        function insertLoadingBlock(afterIndex, blockId) {
+            // Store current cursor position
+            const currentCursorStart = editor.selectionStart;
+            const currentCursorEnd = editor.selectionEnd;
+            
+            const beforeText = editor.value.substring(0, afterIndex);
+            const afterText = editor.value.substring(afterIndex);
+            
+            // Add newline after closing ``` and then the loading block
+            const loadingBlock = `\n\n\`\`\`llm_r\n*Loading response from Gemini...*\n\`\`\``;
+            
+            console.log('[DEBUG] Inserting loading block at position:', afterIndex);
+            editor.value = beforeText + loadingBlock + afterText;
+            
+            // Restore cursor position if it was after the insertion point
+            if (currentCursorStart > afterIndex) {
+                const offset = loadingBlock.length;
+                editor.selectionStart = currentCursorStart + offset;
+                editor.selectionEnd = currentCursorEnd + offset;
+            } else {
+                // Keep cursor where it was
+                editor.selectionStart = currentCursorStart;
+                editor.selectionEnd = currentCursorEnd;
+            }
+            
+            // Store the loading block info
+            loadingBlocks.set(blockId, {
+                startPos: afterIndex + 2, // +2 for the \n\n
+                loadingText: loadingBlock
+            });
+            
+            return afterIndex + loadingBlock.length;
+        }
+        
+        async function updateLoadingBlock(blockId, response) {
+            const loadingInfo = loadingBlocks.get(blockId);
+            if (!loadingInfo) return;
+            
+            // Store current cursor position
+            const currentCursorStart = editor.selectionStart;
+            const currentCursorEnd = editor.selectionEnd;
+            
+            const responseBlock = `\`\`\`llm_r\n${response}\n\`\`\``;
+            
+            console.log('[DEBUG] Updating loading block with response');
+            
+            // Find the loading block and replace it
+            const loadingText = loadingInfo.loadingText;
+            const loadingStart = editor.value.indexOf(loadingText);
+            
+            if (loadingStart !== -1) {
+                const beforeLoading = editor.value.substring(0, loadingStart);
+                const afterLoading = editor.value.substring(loadingStart + loadingText.length);
+                
+                editor.value = beforeLoading + responseBlock + afterLoading;
+                
+                // Adjust cursor position based on the change in text length
+                const lengthDiff = responseBlock.length - loadingText.length;
+                
+                if (currentCursorStart > loadingStart + loadingText.length) {
+                    // Cursor was after the loading block
+                    editor.selectionStart = currentCursorStart + lengthDiff;
+                    editor.selectionEnd = currentCursorEnd + lengthDiff;
+                } else if (currentCursorStart >= loadingStart) {
+                    // Cursor was inside the loading block - move it to end of response
+                    editor.selectionStart = loadingStart + responseBlock.length;
+                    editor.selectionEnd = loadingStart + responseBlock.length;
+                } else {
+                    // Cursor was before the loading block - keep it where it was
+                    editor.selectionStart = currentCursorStart;
+                    editor.selectionEnd = currentCursorEnd;
+                }
+            }
+            
+            // Clean up
+            loadingBlocks.delete(blockId);
+        }
+        
+        async function processNewLlmPBlock(block) {
+            console.log('[DEBUG] Processing new llm_p block:', block.content.substring(0, 50) + '...');
+            
+            // Mark as processed immediately
+            processedPrompts.add(block.id);
+            
+            // Insert loading block
+            const insertPosition = block.index + block.fullMatch.length;
+            insertLoadingBlock(insertPosition, block.id);
+            
+            // Update status
+            status.textContent = 'Calling Gemini...';
+            status.classList.add('show');
+            
+            // Re-render to show loading block
+            renderMarkdown();
+            
+            // Call Gemini API
+            const response = await callGemini(block.content);
+            
+            // Update the loading block with response
+            await updateLoadingBlock(block.id, response);
+            
+            status.textContent = 'Response added';
+            setTimeout(() => {
+                status.classList.remove('show');
+            }, 2000);
+            
+            console.log('[DEBUG] Block processing complete, re-rendering...');
+            // Final render
+            renderMarkdown();
+        }
+        
+        function checkForNewBlocks() {
+            const currentBlocks = extractLlmPBlocks(editor.value);
+            
+            // Find blocks that haven't been processed yet
+            for (const block of currentBlocks) {
+                if (!processedPrompts.has(block.id)) {
+                    console.log('[DEBUG] Found new llm_p block to process');
+                    processNewLlmPBlock(block);
+                    break; // Process one at a time
+                }
+            }
+        }
+        
+        function renderMarkdown() {
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(() => {
+                fetch('/render', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ markdown: editor.value })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    preview.innerHTML = data.html;
+                    showStatus();
+                    checkForNewBlocks();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }, 300); // 300ms debounce
+        }
+        
+        function showStatus() {
+            if (loadingBlocks.size === 0) {
+                status.textContent = 'Saved';
+                status.classList.add('show');
+                setTimeout(() => {
+                    status.classList.remove('show');
+                }, 1000);
+            }
+        }
+        
+        editor.addEventListener('input', renderMarkdown);
+        
+        // Initial render
+        renderMarkdown();
+        
+        // Handle tab key in editor
+        editor.addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+            }
+        });
+    </script>
+</body>
+</html>
